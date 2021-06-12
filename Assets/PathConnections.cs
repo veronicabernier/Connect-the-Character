@@ -8,12 +8,17 @@ public class PathConnections : MonoBehaviour
     [System.Serializable]
     public class Path
     {
-        public Transform[] pathPositions;
-        int curPos;
+        public Transform[] pathPositions; //array of path points (positions)
+        public int nextPos = 0; //index to where character moves
+        public GameObject characterHead;
+        public GameObject characterBody;
     }
 
 
     [SerializeField] public Path[] paths;
+
+    [Tooltip("Speed at which heads move")]
+    [SerializeField] public int moveSpeed = 1; 
 
 
     //line renderer preferences
@@ -29,6 +34,44 @@ public class PathConnections : MonoBehaviour
     {
         drawPaths();
     }
+
+    void Update()
+    {
+        moveCharacters();
+    }
+
+    public void moveCharacters()
+    {
+        //move through each of the paths (4)
+        for (var i = 0; i < paths.Length; i++)
+        {
+            moveCharacterAt(paths[i]);
+        }
+    }
+
+    public void moveCharacterAt(Path path)
+    {
+        //move to next position: curPathPositions[curNextPos].position
+        GameObject curCharacterHead = path.characterHead;
+        int curNextPos = path.nextPos;
+        Transform[] curPathPositions = path.pathPositions;
+
+        if (curCharacterHead.transform.position == curPathPositions[curNextPos].position)
+        {
+            if (curNextPos < curPathPositions.Length - 1)
+            {
+                path.nextPos++;
+            }
+        }
+        else if (curNextPos < curPathPositions.Length)
+        {
+            Vector3 pos1 = curCharacterHead.transform.position;
+            Vector3 pos2 = curPathPositions[curNextPos].position;
+            //move at moveSpeed from pos1 to pos2
+            curCharacterHead.transform.position = Vector3.MoveTowards(pos1, pos2, moveSpeed * Time.deltaTime);
+        }
+    }
+
 
     public void drawPaths()
     {
