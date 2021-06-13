@@ -1026,28 +1026,28 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   paths:
-  - pathPositions:
+  - ogVerticalPoints:
     - {fileID: 1127586347}
     - {fileID: 249948547}
-    nextPos: 0
+    isMoving: 0
     characterHead: {fileID: 1834309316}
     characterBody: {fileID: 905936439}
-  - pathPositions:
+  - ogVerticalPoints:
     - {fileID: 50677600}
     - {fileID: 2011650074}
-    nextPos: 0
+    isMoving: 0
     characterHead: {fileID: 10980429}
     characterBody: {fileID: 1774900458}
-  - pathPositions:
+  - ogVerticalPoints:
     - {fileID: 247382730}
     - {fileID: 28471344}
-    nextPos: 0
+    isMoving: 0
     characterHead: {fileID: 792248484}
     characterBody: {fileID: 1635701044}
-  - pathPositions:
+  - ogVerticalPoints:
     - {fileID: 764142897}
     - {fileID: 267529740}
-    nextPos: 0
+    isMoving: 0
     characterHead: {fileID: 1624410295}
     characterBody: {fileID: 1897165961}
   moveSpeed: 2

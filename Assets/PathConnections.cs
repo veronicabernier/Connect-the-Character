@@ -8,8 +8,13 @@ public class PathConnections : MonoBehaviour
     [System.Serializable]
     public class Path
     {
-        public Transform[] pathPositions; //array of path points (positions)
-        public int nextPos = 0; //index to where character moves
+        public Transform[] ogVerticalPoints = new Transform[2];
+        public LinkedList<Transform> curPoints;
+        public LinkedListNode<Transform> nextPoint; //index to where character moves
+        public bool isMoving = false;
+
+        //public Transform[] pathPositions; //array of path points (positions)
+        //public int nextPos = 0; //index to where character moves
         public GameObject characterHead;
         public GameObject characterBody;
     }
@@ -21,8 +26,7 @@ public class PathConnections : MonoBehaviour
     [SerializeField] public int moveSpeed = 1;
     [SerializeField] private Camera mainCamera;
 
-    //the original vertical lines
-    private Transform[][] ogPathPositions;
+
     bool isDrawing;
     int newPathStart;
     Vector3 newPathStartPos;
@@ -40,14 +44,37 @@ public class PathConnections : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        //saving them to restore them and know where we can draw
-        ogPathPositions = new Transform[paths.Length][];
-        ogPathPositions = copyOGPathPositions(ogPathPositions, paths, 0, paths.Length - 1, 0);
+        //filling up curPositions of each path
+        initializeCurPoints();
+
+        Debug.Log("points initialized");
+        initializeNextPoints();
+        Debug.Log("nexts initialized");
 
         isDrawing = false;
         areMoving = false; //the characters dont start off moving
 
         drawPaths();
+
+        Debug.Log("paths drawn");
+    }
+
+    private void initializeCurPoints()
+    {
+        for (int i = 0; i < paths.Length; i++)
+        {
+            paths[i].curPoints = new LinkedList<Transform>();
+            paths[i].curPoints.AddLast(paths[i].ogVerticalPoints[0]);
+            paths[i].curPoints.AddLast(paths[i].ogVerticalPoints[1]);
+        }
+    }
+
+    private void initializeNextPoints()
+    {
+        for (int i = 0; i < paths.Length; i++)
+        {
+            paths[i].nextPoint = paths[i].curPoints.First;
+        }
     }
 
     void Update()
@@ -68,12 +95,12 @@ public class PathConnections : MonoBehaviour
         //if the player has clicked the screen
         if (Input.GetMouseButton(0) && !isDrawing)
         {
-            checkFirstNewPathPoint();
+            checkFirstNewPoint();
 
         }
         else if (isDrawing && !Input.GetMouseButton(0))
         {
-            checkEndNewPathPoint();
+            checkEndNewPoint();
         }
         else if (!Input.GetMouseButton(0))
         {
@@ -81,60 +108,52 @@ public class PathConnections : MonoBehaviour
         }
     }
 
-    private void checkEndNewPathPoint()
+    private void checkFirstNewPoint()
+    {
+        Debug.Log("clocked somewhere");
+        //if the player clicked on one of the vertical lines
+        for (var i = 0; i < paths.Length; i++)
+        {
+            //y position clicked must be lesser that the first y (the highest) and higher than the second y (lowest).
+            if (mouseInPath(paths[i]))
+            {
+                isDrawing = true;
+                newPathStart = i;
+                newPathStartPos = new Vector3(paths[i].ogVerticalPoints[0].position.x, mainCamera.ScreenToWorldPoint(Input.mousePosition).y, 0);
+                Debug.Log("clicked point");
+            }
+        }
+    }
+
+    private void checkEndNewPoint()
     {
         //the user has let go of the button 
         isDrawing = false;
 
         //check if it has gotten any valid position
-        for (var i = 0; i < ogPathPositions.Length; i++)
+        for (var i = 0; i < paths.Length; i++)
         {
-            //validate that it is a path
-            if (ogPathPositions[i].Length >= 2)
+            //error consideration for the x cordinate since it's hard to click the exact spot
+            //y position clicked must be lesser that the first y (the highest) and higher than the second y (lowest).
+            if (i != newPathStart && mouseInPath(paths[i]))
             {
-                //error consideration for the x cordinate since it's hard to click the exact spot
-                //y position clicked must be lesser that the first y (the highest) and higher than the second y (lowest).
-                if (i != newPathStart && mouseInPath(ogPathPositions[i]))
-                {
-                    //alter current path
-                    Debug.Log("new path");
-                    Vector3 newPathEndPos = new Vector3(ogPathPositions[i][0].position.x, mainCamera.ScreenToWorldPoint(Input.mousePosition).y, 0);
-                    alterPathsPositions(newPathStart, i, newPathStartPos, newPathEndPos);
+                //alter current path
+                Debug.Log("new path");
+                int newPathEnd = i;
+                Vector3 newPathEndPos = new Vector3(paths[i].ogVerticalPoints[0].position.x, mainCamera.ScreenToWorldPoint(Input.mousePosition).y, 0);
+                alterPathsPositions(newPathStart, newPathEnd, newPathStartPos, newPathEndPos);
 
-                    //draw new path when we are done
-                    drawPaths();
-                }
+                //draw new path when we are done
+                drawPaths();
             }
         }
     }
 
-    private void checkFirstNewPathPoint()
+    public bool mouseInPath(Path curPath)
     {
-        Debug.Log("clocked somewhere");
-        //if the player clicked on one of the vertical lines
-        for (var i = 0; i < ogPathPositions.Length; i++)
-        {
-            //validate that it is a path
-            if (ogPathPositions[i].Length >= 2)
-            {
-                //error consideration for the x cordinate since it's hard to click the exact spot
-                //y position clicked must be lesser that the first y (the highest) and higher than the second y (lowest).
-                if (mouseInPath(ogPathPositions[i]))
-                {
-                    isDrawing = true;
-                    newPathStart = i;
-                    newPathStartPos = new Vector3(ogPathPositions[i][0].position.x, mainCamera.ScreenToWorldPoint(Input.mousePosition).y, 0);
-                    Debug.Log("clicked point");
-                }
-            }
-        }
-    }
-
-    public bool mouseInPath(Transform[] ogCurPathPositions)
-    {
-        if ((Mathf.Abs(ogCurPathPositions[0].position.x - mainCamera.ScreenToWorldPoint(Input.mousePosition).x) < (lineThickness)) &&
-            ((ogCurPathPositions[0].position.y >= mainCamera.ScreenToWorldPoint(Input.mousePosition).y) &&
-            (ogCurPathPositions[1].position.y <= mainCamera.ScreenToWorldPoint(Input.mousePosition).y)))
+        if ((Mathf.Abs(curPath.ogVerticalPoints[0].position.x - mainCamera.ScreenToWorldPoint(Input.mousePosition).x) < (lineThickness)) &&
+            ((curPath.ogVerticalPoints[0].position.y >= mainCamera.ScreenToWorldPoint(Input.mousePosition).y) &&
+            (curPath.ogVerticalPoints[1].position.y <= mainCamera.ScreenToWorldPoint(Input.mousePosition).y)))
         {
             return true;
         }
@@ -152,96 +171,83 @@ public class PathConnections : MonoBehaviour
         newPointEnd.transform.SetPositionAndRotation(endPos, new Quaternion(0, 0, 0, 0));
         newPointEnd.transform.SetParent(parent);
 
-        //find index of position in startPath that we draw after
-        int i = findMiddleIndex(paths[startPath].pathPositions, startPos);
-        
-        //we need to save the rest of the array from here for later
-        Transform[] temp = new Transform[paths[startPath].pathPositions.Length - i - 1];
-        //then copy the rest of paths[startPath] to temp
-        temp = addPartOfPath(temp, paths[startPath].pathPositions, i + 1, paths[startPath].pathPositions.Length - 1, 0);
-        //now the "rest" of the paths[startPath] is saved and we can replace it
+        //find nodes of positions in middle of new points for both paths
+        LinkedListNode<Transform> midNodeStart = findMiddleIndex(paths[startPath].curPoints, startPos);
+        LinkedListNode<Transform> midNodeEnd = findMiddleIndex(paths[endPath].curPoints, endPos);
 
-        //find at which point in endPath the newPoint intercepted
-        int j = findMiddleIndex(paths[endPath].pathPositions, endPos);
-        //intercepted between i and i + 1
-
-        //create new array
-
-        Transform[] newStartPathArray = new Transform[i + paths[endPath].pathPositions.Length - j + 2];
-        //first the new point
-        //copy first half of original
-        newStartPathArray = addPartOfPath(newStartPathArray, paths[startPath].pathPositions, 0, i, 0);
-
-        //add new points
-        newStartPathArray[i + 1] = newPointStart.transform;
-        newStartPathArray[i + 2] = newPointEnd.transform;
-
-        //copy second part of the original endPath
-        newStartPathArray = addPartOfPath(newStartPathArray, paths[endPath].pathPositions, j + 1, 
-            paths[endPath].pathPositions.Length - 1, i + 3);
-
-        //replace old one
-        paths[startPath].pathPositions = newStartPathArray;
+        //New nodes created to add to the current points on each paths
+        LinkedListNode<Transform> newNodeStart1 = new LinkedListNode<Transform>(newPointStart.transform);
+        LinkedListNode<Transform> newNodeStart2 = new LinkedListNode<Transform>(newPointStart.transform);
+        LinkedListNode<Transform> newNodeEnd1 = new LinkedListNode<Transform>(newPointEnd.transform);
+        LinkedListNode<Transform> newNodeEnd2 = new LinkedListNode<Transform>(newPointEnd.transform);
 
 
-        //END PATH
-        Transform[] newEndPathArray = new Transform[j + 1 + temp.Length + 2];
-        //first part of endPath
-        //copy first half of original
-        newEndPathArray = addPartOfPath(newEndPathArray, paths[endPath].pathPositions, 0, j, 0);
+        //new linked list with first elements before middle (of start path)
+        LinkedList<Transform> newStartPathPoints = linkedListUntilMid(paths[startPath].curPoints, midNodeStart);
+        //set startPath's midNodeStart's next to the new points (with "1" on variable)
+        newStartPathPoints.AddLast(newNodeStart1);
+        newStartPathPoints.AddLast(newNodeEnd1);
+        //add the nodes from after the middle of the end path
+        linkedListFromMid(newStartPathPoints, paths[endPath].curPoints, midNodeEnd.Next);
 
 
-        //add new points
-        newEndPathArray[j + 1] = newPointEnd.transform;
-        newEndPathArray[j + 2] = newPointStart.transform;
 
-        //copy second part of the orifinal startPath (on temp)
-        newEndPathArray = addPartOfPath(newEndPathArray, temp, 0, temp.Length - 1, i + 3);
+        //new linked list with first elements before middle (of end path)
+        LinkedList<Transform> newEndPathPoints = linkedListUntilMid(paths[endPath].curPoints, midNodeEnd);
+        //set endPath's midNodeEnd's next to the new points (with "2" on variable)
+        newEndPathPoints.AddLast(newNodeEnd2);
+        newEndPathPoints.AddLast(newNodeStart2);
+        //add the nodes from after the middle of the end path
+        linkedListFromMid(newEndPathPoints, paths[startPath].curPoints, midNodeStart.Next);
 
-        Debug.Log("temp: " + temp.Length);
-        Debug.Log("end: " + newEndPathArray.Length);
-        //assign it
-        paths[endPath].pathPositions = newEndPathArray;
+
+        //assign new variables to old ones
+        paths[startPath].curPoints = newStartPathPoints;
+        paths[endPath].curPoints = newEndPathPoints;
+
     }
 
-    private int findMiddleIndex(Transform[] curPath, Vector3 curPos)
+    private LinkedList<Transform> linkedListUntilMid(LinkedList<Transform> curPoints, LinkedListNode<Transform> midNode)
     {
-        for (int i = 0; i < curPath.Length; i++)
+        LinkedListNode<Transform> curPointNode = curPoints.First;
+        LinkedList<Transform> newPoints = new LinkedList<Transform>();
+
+        while (curPointNode != midNode.Next)
         {
-            if (curPos.x == curPath[i].position.x && curPath[i].position.y <
-                curPos.y)
-            {
-                return i - 1;
-            }
+            //copy only the value so it doesn't point to where it was originally pointing
+            newPoints.AddLast(new LinkedListNode<Transform>(curPointNode.Value));
+            curPointNode = curPointNode.Next;
         }
-        return -1;
+        return newPoints;
     }
 
-    public Transform[] addPartOfPath(Transform[] curArray, Transform[] curPath, int start, int end, int initialCounter)
+    private LinkedList<Transform> linkedListFromMid(LinkedList<Transform> curList, LinkedList<Transform> curPoints, LinkedListNode<Transform> midNode)
     {
-        int counter = initialCounter;
-        for(int i = start; i <= end; i++)
+        LinkedListNode<Transform> curPointNode = curPoints.First;
+
+        while (curPointNode != midNode)
         {
-            curArray[counter] = curPath[i];
-            counter++;
+            curPointNode = curPointNode.Next;
         }
-        return curArray;
+        while (curPointNode != null)
+        {
+            //copy only the value so it doesn't point to where it was originally pointing
+            curList.AddLast(new LinkedListNode<Transform>(curPointNode.Value));
+            curPointNode = curPointNode.Next;
+        }
+
+        return curList;
     }
 
-    public Transform[][] copyOGPathPositions(Transform[][] copyPathPositions, Path[] ogPaths, int start, 
-        int end, int initialCounter)
+    private LinkedListNode<Transform> findMiddleIndex(LinkedList<Transform> curPoints, Vector3 curPos)
     {
-        int counter = initialCounter;
-        for (int i = start; i <= end; i++)
-        {
-            Transform[] curPositions = new Transform[ogPaths[i].pathPositions.Length];
-            curPositions = addPartOfPath(curPositions, 
-                ogPaths[i].pathPositions, 0, ogPaths[i].pathPositions.Length - 1, 0);
-            copyPathPositions[counter] = curPositions;
+        LinkedListNode<Transform> curPointNode = curPoints.First; 
 
-            counter++;
+        while (curPointNode.Next.Value.position.y > curPos.y && curPos.x != curPointNode.Next.Value.position.x)
+        {
+            curPointNode = curPointNode.Next;
         }
-        return copyPathPositions;
+        return curPointNode;
     }
 
 
@@ -256,24 +262,27 @@ public class PathConnections : MonoBehaviour
 
     public void moveCharacterAt(Path path)
     {
-        //move to next position: curPathPositions[curNextPos].position
-        GameObject curCharacterHead = path.characterHead;
-        int curNextPos = path.nextPos;
-        Transform[] curPathPositions = path.pathPositions;
 
-        if (curCharacterHead.transform.position == curPathPositions[curNextPos].position)
+        //check if it already reached the position
+        if (path.characterHead.transform.position == path.nextPoint.Value.position)
         {
-            if (curNextPos < curPathPositions.Length - 1)
+            if (path.nextPoint.Next != null)
             {
-                path.nextPos++;
+                path.nextPoint = path.nextPoint.Next;
+                path.isMoving = true;
+            }
+            else
+            {
+                path.isMoving = false;
             }
         }
-        else if (curNextPos < curPathPositions.Length)
+        else
         {
-            Vector3 pos1 = curCharacterHead.transform.position;
-            Vector3 pos2 = curPathPositions[curNextPos].position;
-            //move at moveSpeed from pos1 to pos2
-            curCharacterHead.transform.position = Vector3.MoveTowards(pos1, pos2, moveSpeed * Time.deltaTime);
+            Vector3 curPos = path.characterHead.transform.position;
+            Vector3 nextPos = path.nextPoint.Value.position;
+
+            //move character's head towards the next position at speed moveSpeed
+            path.characterHead.transform.position = Vector3.MoveTowards(curPos, nextPos, moveSpeed * Time.deltaTime);
         }
     }
 
@@ -283,16 +292,13 @@ public class PathConnections : MonoBehaviour
         //draw all n (or 4) paths
         for (var i = 0; i < paths.Length; i++)
         {
-            //2 or more positions for a valid path
-            if (paths[i].pathPositions != null && paths[i].pathPositions.Length > 1)
-            {
-                //connect each position with a line
-                for (var j = 1; j < paths[i].pathPositions.Length; j++)
-                {
-                    Debug.Log(i + ", Length: " + paths[i].pathPositions.Length);
-                    drawLine(paths[i].pathPositions[j - 1].position, paths[i].pathPositions[j].position);
+            LinkedListNode<Transform> curPointNode = paths[i].curPoints.First;
 
-                }
+            //connect each two points with a line
+            while (curPointNode.Next != null)
+            {
+                drawLine(curPointNode.Value.position, curPointNode.Next.Value.position);
+                curPointNode = curPointNode.Next;
             }
         }
     }
