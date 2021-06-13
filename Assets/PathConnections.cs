@@ -31,7 +31,8 @@ public class PathConnections : MonoBehaviour
     int newPathStart;
     Vector3 newPathStartPos;
 
-    bool areMoving;
+
+    [SerializeField] public bool areMoving;
     [SerializeField] public Transform pointsParent;
 
     //line renderer preferences
@@ -48,16 +49,21 @@ public class PathConnections : MonoBehaviour
         //filling up curPositions of each path
         initializeCurPoints();
 
-        Debug.Log("points initialized");
-        initializeNextPoints();
-        Debug.Log("nexts initialized");
-
         isDrawing = false;
         areMoving = false; //the characters dont start off moving
 
         drawPaths();
 
+        //after 10 seconds characters will start moving
+        Invoke("startMovingCharacters", 10);
+
         Debug.Log("paths drawn");
+    }
+
+    private void startMovingCharacters()
+    {
+        initializeNextPoints();
+        areMoving = true;
     }
 
     private void initializeCurPoints()
@@ -263,9 +269,12 @@ public class PathConnections : MonoBehaviour
 
     public void moveCharacterAt(Path path)
     {
+        GameObject characterHead = path.characterHead;
+        LinkedListNode<Transform> curNext = path.nextPoint;
+
 
         //check if it already reached the position
-        if (path.characterHead.transform.position == path.nextPoint.Value.position)
+        if (characterHead.transform.position == curNext.Value.position)
         {
             if (path.nextPoint.Next != null)
             {
@@ -279,11 +288,11 @@ public class PathConnections : MonoBehaviour
         }
         else
         {
-            Vector3 curPos = path.characterHead.transform.position;
-            Vector3 nextPos = path.nextPoint.Value.position;
+            Vector3 curPos = characterHead.transform.position;
+            Vector3 nextPos = curNext.Value.position;
 
             //move character's head towards the next position at speed moveSpeed
-            path.characterHead.transform.position = Vector3.MoveTowards(curPos, nextPos, moveSpeed * Time.deltaTime);
+            characterHead.transform.position = Vector3.MoveTowards(curPos, nextPos, moveSpeed * Time.deltaTime);
         }
     }
 
@@ -295,14 +304,19 @@ public class PathConnections : MonoBehaviour
         //draw all n (or 4) paths
         for (var i = 0; i < paths.Length; i++)
         {
-            LinkedListNode<Transform> curPointNode = paths[i].curPoints.First;
+            drawPathAt(paths[i]);
+        }
+    }
 
-            //connect each two points with a line
-            while (curPointNode.Next != null)
-            {
-                drawLine(curPointNode.Value.position, curPointNode.Next.Value.position);
-                curPointNode = curPointNode.Next;
-            }
+    private void drawPathAt(Path path)
+    {
+        LinkedListNode<Transform> curPointNode = path.curPoints.First;
+
+        //connect each two points with a line
+        while (curPointNode.Next != null)
+        {
+            drawLine(curPointNode.Value.position, curPointNode.Next.Value.position);
+            curPointNode = curPointNode.Next;
         }
     }
 
