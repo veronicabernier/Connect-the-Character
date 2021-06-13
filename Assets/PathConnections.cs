@@ -32,13 +32,14 @@ public class PathConnections : MonoBehaviour
     Vector3 newPathStartPos;
 
     bool areMoving;
+    [SerializeField] public Transform pointsParent;
 
     //line renderer preferences
     [Header("Paths Lines")]
 
     [SerializeField] public float lineThickness = 0.10f;
     [SerializeField] public Material lineMaterial;
-    [SerializeField] public Transform parent;
+    [SerializeField] public Transform linesParent;
 
 
     // Start is called before the first frame update
@@ -165,11 +166,11 @@ public class PathConnections : MonoBehaviour
     {
         GameObject newPointStart = new GameObject("pNew");
         newPointStart.transform.SetPositionAndRotation(startPos, new Quaternion(0, 0, 0, 0));
-        newPointStart.transform.SetParent(parent);
+        newPointStart.transform.SetParent(pointsParent);
 
         GameObject newPointEnd = new GameObject("pNew");
         newPointEnd.transform.SetPositionAndRotation(endPos, new Quaternion(0, 0, 0, 0));
-        newPointEnd.transform.SetParent(parent);
+        newPointEnd.transform.SetParent(pointsParent);
 
         //find nodes of positions in middle of new points for both paths
         LinkedListNode<Transform> midNodeStart = findMiddleIndex(paths[startPath].curPoints, startPos);
@@ -289,6 +290,8 @@ public class PathConnections : MonoBehaviour
 
     public void drawPaths()
     {
+        destroyLines();
+
         //draw all n (or 4) paths
         for (var i = 0; i < paths.Length; i++)
         {
@@ -303,15 +306,20 @@ public class PathConnections : MonoBehaviour
         }
     }
 
+    private void destroyLines()
+    {
+        //destroy all children of linesParent
+        foreach(Transform child in linesParent.transform)
+        {
+            Destroy(child.gameObject);
+        }
+    }
 
     public void drawLine(Vector3 pos1, Vector3 pos2)
     {
-        //destroy previous ones
-        //TODO
-
 
         LineRenderer lineRenderer = new GameObject("line").AddComponent<LineRenderer>();
-        lineRenderer.transform.SetParent(parent);
+        lineRenderer.transform.SetParent(linesParent);
         lineRenderer.useWorldSpace = true;
         lineRenderer.startWidth = lineThickness;
         lineRenderer.endWidth = lineThickness;
