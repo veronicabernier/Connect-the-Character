@@ -13,8 +13,6 @@ public class PathConnections : MonoBehaviour
         public LinkedListNode<Transform> nextPoint; //index to where character moves
         public bool isMoving = false;
 
-        //public Transform[] pathPositions; //array of path points (positions)
-        //public int nextPos = 0; //index to where character moves
         public GameObject characterHead;
         public GameObject characterBody;
     }
@@ -22,14 +20,10 @@ public class PathConnections : MonoBehaviour
 
     [SerializeField] public Path[] paths;
 
+
     [Tooltip("Speed at which heads move")]
     [SerializeField] public int moveSpeed = 1;
     [SerializeField] private Camera mainCamera;
-
-
-    bool isDrawing;
-    int newPathStart;
-    Vector3 newPathStartPos;
 
 
     [SerializeField] public bool areMoving;
@@ -42,6 +36,10 @@ public class PathConnections : MonoBehaviour
     [SerializeField] public Material lineMaterial;
     [SerializeField] public Transform linesParent;
 
+
+    bool isDrawing;
+    int newPathStart;
+    Vector3 newPathStartPos;
 
     // Start is called before the first frame update
     void Start()
@@ -60,12 +58,6 @@ public class PathConnections : MonoBehaviour
         Debug.Log("paths drawn");
     }
 
-    private void startMovingCharacters()
-    {
-        initializeNextPoints();
-        areMoving = true;
-    }
-
     private void initializeCurPoints()
     {
         for (int i = 0; i < paths.Length; i++)
@@ -74,6 +66,12 @@ public class PathConnections : MonoBehaviour
             paths[i].curPoints.AddLast(paths[i].ogVerticalPoints[0]);
             paths[i].curPoints.AddLast(paths[i].ogVerticalPoints[1]);
         }
+    }
+
+    private void startMovingCharacters()
+    {
+        initializeNextPoints();
+        areMoving = true;
     }
 
     private void initializeNextPoints()
@@ -96,6 +94,8 @@ public class PathConnections : MonoBehaviour
         }
 
     }
+
+
 
     private void checkForNewLines()
     {
@@ -125,11 +125,42 @@ public class PathConnections : MonoBehaviour
             if (mouseInPath(paths[i]))
             {
                 isDrawing = true;
-                newPathStart = i;
+                newPathStart = findPathIndexByPoint(paths[i].ogVerticalPoints[0].position.x, mainCamera.ScreenToWorldPoint(Input.mousePosition).y);
                 newPathStartPos = new Vector3(paths[i].ogVerticalPoints[0].position.x, mainCamera.ScreenToWorldPoint(Input.mousePosition).y, 0);
                 Debug.Log("clicked point");
             }
         }
+    }
+
+    private int findPathIndexByPoint(float xPos, float yPos)
+    {
+        for(int i = 0; i < paths.Length; i++)
+        {
+            //look through currents instead of originals because vertical portions lines change
+            //CAN BE VARIOUS???? ahhhhhh, wait... no, they'd end up in same place so just one :)
+            LinkedListNode<Transform> curPointNode = paths[i].curPoints.First;
+            while(curPointNode.Next != null)
+            {
+                //check if new pos is inside this path
+
+                //check if this interval is part of the og vertical lines (what we need)
+                if(curPointNode.Value.position.x == curPointNode.Next.Value.position.x) 
+                {
+                    //check if my x is the same so my new pos is in that vertical line
+                    if(curPointNode.Value.position.x == xPos)
+                    {
+                        //check if it's between the two points on y axis
+                        if(curPointNode.Value.position.y > yPos && curPointNode.Next.Value.position.y < yPos)
+                        {
+                            return i;
+                        }
+                    }
+                }
+                curPointNode = curPointNode.Next;
+            }
+        }
+
+        return -1;
     }
 
     private void checkEndNewPoint()
@@ -141,12 +172,12 @@ public class PathConnections : MonoBehaviour
         for (var i = 0; i < paths.Length; i++)
         {
             //error consideration for the x cordinate since it's hard to click the exact spot
-            //y position clicked must be lesser that the first y (the highest) and higher than the second y (lowest).
-            if (i != newPathStart && mouseInPath(paths[i]))
+            //abs to make sure lines are directly next to each other
+            if ((Mathf.Abs(i - newPathStart) == 1) && mouseInPath(paths[i]))
             {
                 //alter current path
                 Debug.Log("new path");
-                int newPathEnd = i;
+                int newPathEnd = findPathIndexByPoint(paths[i].ogVerticalPoints[0].position.x, mainCamera.ScreenToWorldPoint(Input.mousePosition).y);
                 Vector3 newPathEndPos = new Vector3(paths[i].ogVerticalPoints[0].position.x, mainCamera.ScreenToWorldPoint(Input.mousePosition).y, 0);
                 alterPathsPositions(newPathStart, newPathEnd, newPathStartPos, newPathEndPos);
 
@@ -168,6 +199,7 @@ public class PathConnections : MonoBehaviour
         return false;
     }
 
+
     public void alterPathsPositions(int startPath, int endPath, Vector3 startPos, Vector3 endPos)
     {
         GameObject newPointStart = new GameObject("pNew");
@@ -179,8 +211,8 @@ public class PathConnections : MonoBehaviour
         newPointEnd.transform.SetParent(pointsParent);
 
         //find nodes of positions in middle of new points for both paths
-        LinkedListNode<Transform> midNodeStart = findMiddleIndex(paths[startPath].curPoints, startPos);
-        LinkedListNode<Transform> midNodeEnd = findMiddleIndex(paths[endPath].curPoints, endPos);
+        LinkedListNode<Transform> midNodeStart = findMiddleNode(paths[startPath].curPoints, startPos);
+        LinkedListNode<Transform> midNodeEnd = findMiddleNode(paths[endPath].curPoints, endPos);
 
         //New nodes created to add to the current points on each paths
         LinkedListNode<Transform> newNodeStart1 = new LinkedListNode<Transform>(newPointStart.transform);
@@ -246,11 +278,13 @@ public class PathConnections : MonoBehaviour
         return curList;
     }
 
-    private LinkedListNode<Transform> findMiddleIndex(LinkedList<Transform> curPoints, Vector3 curPos)
+    private LinkedListNode<Transform> findMiddleNode(LinkedList<Transform> curPoints, Vector3 curPos)
     {
         LinkedListNode<Transform> curPointNode = curPoints.First; 
 
-        while (curPointNode.Next.Value.position.y > curPos.y && curPos.x != curPointNode.Next.Value.position.x)
+        while (!(curPointNode.Next.Value.position.y < curPos.y && curPointNode.Value.position.y > curPos.y)
+            || curPos.x != curPointNode.Next.Value.position.x
+            || curPos.x != curPointNode.Value.position.x)
         {
             curPointNode = curPointNode.Next;
         }
