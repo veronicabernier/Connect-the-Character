@@ -49,28 +49,55 @@ public class PathConnections : MonoBehaviour
     [SerializeField] public Transform linesParent;
 
     [SerializeField] public GameObject winLoseText;
+    [SerializeField] public GameObject levelText;
+    [SerializeField] public GameObject nextLevelButton;
+    [SerializeField] public GameObject startButton;
+
+    [SerializeField] public GameObject charactersParent;
 
 
+    GameObject[] toDestroy;
+    bool started;
     bool levelFinished;
     bool isDrawing;
     int newPathStart;
+    int curLevel;
     Vector3 newPathStartPos;
 
     // Start is called before the first frame update
     void Start()
     {
-        newLevel();
+        InitializeToDestroy();
+        activateStartButton();
     }
 
-    private void newLevel()
+    public void InitializeToDestroy()
     {
-        levelFinished = false;
+        toDestroy = new GameObject[8];
+        for(int i = 0; i < toDestroy.Length; i++)
+        {
+            toDestroy[i] = new GameObject();
+        }
+    }
 
-        //filling up curPositions of each path
-        initializeCurPoints();
+    public void restart()
+    {
+        startButton.SetActive(false);
+
+        killCharacters();
+        winLoseText.GetComponent<TextMeshProUGUI>().text = "";
 
         //choose random characters for each path
         populateCharacters();
+
+
+        levelFinished = false;
+        curLevel = 1;
+        levelText.GetComponent<TextMeshProUGUI>().text = "Lv. " + curLevel.ToString();
+        started = true;
+
+        //filling up curPositions of each path
+        initializeCurPoints();
 
         isDrawing = false;
         areMoving = false; //the characters dont start off moving
@@ -81,10 +108,54 @@ public class PathConnections : MonoBehaviour
         Invoke("startMovingCharacters", 10);
     }
 
+    public void newLevel()
+    {
+        nextLevelButton.SetActive(false);
+
+        killCharacters();
+        winLoseText.GetComponent<TextMeshProUGUI>().text = "";
+
+        //choose random characters for each path
+        populateCharacters();
+
+        levelFinished = false;
+        curLevel++;
+        levelText.GetComponent<TextMeshProUGUI>().text = "Lv. " + curLevel.ToString();
+        started = true;
+
+        isDrawing = false;
+        areMoving = false; //the characters dont start off moving
+
+        drawPaths();
+
+        //after 10 seconds characters will start moving
+        Invoke("startMovingCharacters", 10);
+    }
+
+    private void activateNextLevelButton()
+    {
+        started = false;
+        nextLevelButton.SetActive(true);
+    }
+
+    private void activateStartButton()
+    {
+        started = false;
+        startButton.SetActive(true);
+    }
+
+    private void killCharacters()
+    {
+        foreach(GameObject go in toDestroy){
+           Destroy(go);
+        }
+    }
+
     private void populateCharacters()
     {
         int[] inRound = new int[4];
-        for(int i = 0; i < 4; i++) {
+        for (int i = 0; i < 4; i++)
+        {
             inRound[i] = Random.Range(0, characters.Length);
         }
 
@@ -103,7 +174,7 @@ public class PathConnections : MonoBehaviour
         {
             int inHeads = Random.Range(0, 4);
             //so we haven't already filled that space yet
-            while(orderHeads[inHeads] != 5)
+            while (orderHeads[inHeads] != 5)
             {
                 inHeads = Random.Range(0, 4);
             }
@@ -119,16 +190,22 @@ public class PathConnections : MonoBehaviour
 
         }
 
-
-
-        for (int i = 0; i < 4; i++) {
-            paths[i].characterHead = Instantiate(characters[orderHeads[i]].head, paths[i].ogVerticalPoints[0].position, Quaternion.identity);
-            paths[i].characterHead.SetActive(true);
+        int toDestroyIndex = 0;
+        for (int i = 0; i < 4; i++)
+        {
+            GameObject newHead = Instantiate(characters[orderHeads[i]].head, paths[i].ogVerticalPoints[0].position, Quaternion.identity, charactersParent.transform);
+            newHead.SetActive(true);
+            paths[i].characterHead = newHead;
             paths[i].headTag = characters[orderHeads[i]].tag;
+            toDestroy[toDestroyIndex] = newHead;
+            toDestroyIndex++;
 
-            paths[i].characterBody = Instantiate(characters[orderBodies[i]].body, paths[i].ogVerticalPoints[1].position, Quaternion.identity);
-            paths[i].characterBody.SetActive(true);
+            GameObject newBody = Instantiate(characters[orderBodies[i]].body, paths[i].ogVerticalPoints[1].position, Quaternion.identity, charactersParent.transform);
+            newBody.SetActive(true);
+            paths[i].characterBody = newBody;
             paths[i].bodyTag = characters[orderBodies[i]].tag;
+            toDestroy[toDestroyIndex] = newBody;
+            toDestroyIndex++;
         }
     }
 
@@ -158,20 +235,23 @@ public class PathConnections : MonoBehaviour
 
     void Update()
     {
-        if(areMoving)
-        {
-            moveCharacters();
-            checkIfFinishedMoving();
-        }
-        else if(levelFinished){
-            Debug.Log("stopped moving");
-            checkResults();
-        }
-        else
-        {
-            checkForNewLines();
-        }
+        if(started) {
 
+            if (areMoving)
+            {
+                moveCharacters();
+                checkIfFinishedMoving();
+            }
+            else if (levelFinished)
+            {
+                Debug.Log("stopped moving");
+                checkResults();
+            }
+            else
+            {
+                checkForNewLines();
+            }
+        }
     }
 
     private void checkIfFinishedMoving()
@@ -194,14 +274,15 @@ public class PathConnections : MonoBehaviour
 
     private void checkResults()
     {
+        started = false;
         bool lost = false;
-        foreach(Path path1 in paths)
+        foreach (Path path1 in paths)
         {
-            foreach(Path path2 in paths)
+            foreach (Path path2 in paths)
             {
-                if(path1.characterHead.transform.position == path2.characterBody.transform.position)
+                if (path1.characterHead.transform.position == path2.characterBody.transform.position)
                 {
-                    if(path1.headTag != path2.bodyTag)
+                    if (path1.headTag != path2.bodyTag)
                     {
                         lost = true;
                     }
@@ -222,14 +303,14 @@ public class PathConnections : MonoBehaviour
 
     private void lose()
     {
-        TextMeshProUGUI text = winLoseText.GetComponent<TextMeshProUGUI>();
-        text.text = "Defeat!";
+        winLoseText.GetComponent<TextMeshProUGUI>().text = "Defeat!";
+        Invoke("activateStartButton", 2);
     }
 
     private void win()
     {
-        TextMeshProUGUI text = winLoseText.GetComponent<TextMeshProUGUI>();
-        text.text = "Victory!";
+        winLoseText.GetComponent<TextMeshProUGUI>().text = "Victory!";
+        Invoke("activateNextLevelButton", 2);
     }
 
     private void checkForNewLines()
@@ -269,23 +350,23 @@ public class PathConnections : MonoBehaviour
 
     private int findPathIndexByPoint(float xPos, float yPos)
     {
-        for(int i = 0; i < paths.Length; i++)
+        for (int i = 0; i < paths.Length; i++)
         {
             //look through currents instead of originals because vertical portions lines change
             //CAN BE VARIOUS???? ahhhhhh, wait... no, they'd end up in same place so just one :)
             LinkedListNode<Transform> curPointNode = paths[i].curPoints.First;
-            while(curPointNode.Next != null)
+            while (curPointNode.Next != null)
             {
                 //check if new pos is inside this path
 
                 //check if this interval is part of the og vertical lines (what we need)
-                if(curPointNode.Value.position.x == curPointNode.Next.Value.position.x) 
+                if (curPointNode.Value.position.x == curPointNode.Next.Value.position.x)
                 {
                     //check if my x is the same so my new pos is in that vertical line
-                    if(curPointNode.Value.position.x == xPos)
+                    if (curPointNode.Value.position.x == xPos)
                     {
                         //check if it's between the two points on y axis
-                        if(curPointNode.Value.position.y > yPos && curPointNode.Next.Value.position.y < yPos)
+                        if (curPointNode.Value.position.y > yPos && curPointNode.Next.Value.position.y < yPos)
                         {
                             return i;
                         }
@@ -415,7 +496,7 @@ public class PathConnections : MonoBehaviour
 
     private LinkedListNode<Transform> findMiddleNode(LinkedList<Transform> curPoints, Vector3 curPos)
     {
-        LinkedListNode<Transform> curPointNode = curPoints.First; 
+        LinkedListNode<Transform> curPointNode = curPoints.First;
 
         while (!(curPointNode.Next.Value.position.y < curPos.y && curPointNode.Value.position.y > curPos.y)
             || curPos.x != curPointNode.Next.Value.position.x
@@ -492,7 +573,7 @@ public class PathConnections : MonoBehaviour
     private void destroyLines()
     {
         //destroy all children of linesParent
-        foreach(Transform child in linesParent.transform)
+        foreach (Transform child in linesParent.transform)
         {
             Destroy(child.gameObject);
         }
