@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
+using TMPro;
 
 public class PathConnections : MonoBehaviour
 {
@@ -15,6 +16,8 @@ public class PathConnections : MonoBehaviour
 
         public GameObject characterHead;
         public GameObject characterBody;
+        public string headTag;
+        public string bodyTag;
     }
 
     [System.Serializable]
@@ -22,6 +25,7 @@ public class PathConnections : MonoBehaviour
     {
         public GameObject head;
         public GameObject body;
+        public string tag;
     }
 
 
@@ -44,8 +48,10 @@ public class PathConnections : MonoBehaviour
     [SerializeField] public Material lineMaterial;
     [SerializeField] public Transform linesParent;
 
+    [SerializeField] public GameObject winLoseText;
 
 
+    bool levelFinished;
     bool isDrawing;
     int newPathStart;
     Vector3 newPathStartPos;
@@ -58,6 +64,8 @@ public class PathConnections : MonoBehaviour
 
     private void newLevel()
     {
+        levelFinished = false;
+
         //filling up curPositions of each path
         initializeCurPoints();
 
@@ -116,8 +124,11 @@ public class PathConnections : MonoBehaviour
         for (int i = 0; i < 4; i++) {
             paths[i].characterHead = Instantiate(characters[orderHeads[i]].head, paths[i].ogVerticalPoints[0].position, Quaternion.identity);
             paths[i].characterHead.SetActive(true);
+            paths[i].headTag = characters[orderHeads[i]].tag;
+
             paths[i].characterBody = Instantiate(characters[orderBodies[i]].body, paths[i].ogVerticalPoints[1].position, Quaternion.identity);
             paths[i].characterBody.SetActive(true);
+            paths[i].bodyTag = characters[orderBodies[i]].tag;
         }
     }
 
@@ -150,6 +161,11 @@ public class PathConnections : MonoBehaviour
         if(areMoving)
         {
             moveCharacters();
+            checkIfFinishedMoving();
+        }
+        else if(levelFinished){
+            Debug.Log("stopped moving");
+            checkResults();
         }
         else
         {
@@ -158,7 +174,63 @@ public class PathConnections : MonoBehaviour
 
     }
 
+    private void checkIfFinishedMoving()
+    {
+        bool stillMoving = false;
 
+        foreach (Path path in paths)
+        {
+            if (path.characterHead.transform.position.y != path.characterBody.transform.position.y)
+            {
+                //Debug.Log("head " + path.characterHead.transform);
+                //Debug.Log("body " + path.characterHead.transform);
+                stillMoving = true;
+            }
+        }
+
+        areMoving = stillMoving;
+        levelFinished = !stillMoving;
+    }
+
+    private void checkResults()
+    {
+        bool lost = false;
+        foreach(Path path1 in paths)
+        {
+            foreach(Path path2 in paths)
+            {
+                if(path1.characterHead.transform.position == path2.characterBody.transform.position)
+                {
+                    if(path1.headTag != path2.bodyTag)
+                    {
+                        lost = true;
+                    }
+                }
+            }
+        }
+
+        if (lost)
+        {
+            lose();
+        }
+        else
+        {
+            win();
+        }
+
+    }
+
+    private void lose()
+    {
+        TextMeshProUGUI text = winLoseText.GetComponent<TextMeshProUGUI>();
+        text.text = "Defeat!";
+    }
+
+    private void win()
+    {
+        TextMeshProUGUI text = winLoseText.GetComponent<TextMeshProUGUI>();
+        text.text = "Victory!";
+    }
 
     private void checkForNewLines()
     {
