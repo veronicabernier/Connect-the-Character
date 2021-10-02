@@ -17,8 +17,16 @@ public class PathConnections : MonoBehaviour
         public GameObject characterBody;
     }
 
+    [System.Serializable]
+    public class Character
+    {
+        public GameObject head;
+        public GameObject body;
+    }
+
 
     [SerializeField] public Path[] paths;
+    [SerializeField] public Character[] characters;
 
 
     [Tooltip("Speed at which heads move")]
@@ -37,6 +45,7 @@ public class PathConnections : MonoBehaviour
     [SerializeField] public Transform linesParent;
 
 
+
     bool isDrawing;
     int newPathStart;
     Vector3 newPathStartPos;
@@ -44,8 +53,16 @@ public class PathConnections : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        newLevel();
+    }
+
+    private void newLevel()
+    {
         //filling up curPositions of each path
         initializeCurPoints();
+
+        //choose random characters for each path
+        populateCharacters();
 
         isDrawing = false;
         areMoving = false; //the characters dont start off moving
@@ -54,8 +71,54 @@ public class PathConnections : MonoBehaviour
 
         //after 10 seconds characters will start moving
         Invoke("startMovingCharacters", 10);
+    }
 
-        Debug.Log("paths drawn");
+    private void populateCharacters()
+    {
+        int[] inRound = new int[4];
+        for(int i = 0; i < 4; i++) {
+            inRound[i] = Random.Range(0, characters.Length);
+        }
+
+        int[] orderHeads = new int[4];
+        int[] orderBodies = new int[4];
+
+        //initialize them to 5 or anything
+        for (int i = 0; i < 4; i++)
+        {
+            orderHeads[i] = 5;
+            orderBodies[i] = 5;
+        }
+
+        //shuffling
+        for (int i = 0; i < 4; i++)
+        {
+            int inHeads = Random.Range(0, 4);
+            //so we haven't already filled that space yet
+            while(orderHeads[inHeads] != 5)
+            {
+                inHeads = Random.Range(0, 4);
+            }
+            orderHeads[inHeads] = inRound[i];
+
+            int inBodies = Random.Range(0, 4);
+            //so we haven't already filled that space yet
+            while (orderBodies[inBodies] != 5)
+            {
+                inBodies = Random.Range(0, 4);
+            }
+            orderBodies[inBodies] = inRound[i];
+
+        }
+
+
+
+        for (int i = 0; i < 4; i++) {
+            paths[i].characterHead = Instantiate(characters[orderHeads[i]].head, paths[i].ogVerticalPoints[0].position, Quaternion.identity);
+            paths[i].characterHead.SetActive(true);
+            paths[i].characterBody = Instantiate(characters[orderBodies[i]].body, paths[i].ogVerticalPoints[1].position, Quaternion.identity);
+            paths[i].characterBody.SetActive(true);
+        }
     }
 
     private void initializeCurPoints()
