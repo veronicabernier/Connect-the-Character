@@ -48,11 +48,16 @@ public class PathConnections : MonoBehaviour
     [SerializeField] public Material lineMaterial;
     [SerializeField] public Transform linesParent;
 
+    [Header("Text Fields")]
     [SerializeField] public GameObject winLoseText;
     [SerializeField] public GameObject levelText;
+
+    [Header("Buttons")]
     [SerializeField] public GameObject nextLevelButton;
     [SerializeField] public GameObject startButton;
+    [SerializeField] public GameObject goButton;
 
+    [Header("Parents")]
     [SerializeField] public GameObject charactersParent;
 
 
@@ -104,8 +109,8 @@ public class PathConnections : MonoBehaviour
 
         drawPaths();
 
-        //after 10 seconds characters will start moving
-        Invoke("startMovingCharacters", 10);
+        //enable go button
+        goButton.SetActive(true);
     }
 
     public void newLevel()
@@ -128,8 +133,15 @@ public class PathConnections : MonoBehaviour
 
         drawPaths();
 
-        //after 10 seconds characters will start moving
-        Invoke("startMovingCharacters", 10);
+        //enable go button
+        goButton.SetActive(true);
+    }
+
+    public void go()
+    {
+        //disable go button
+        goButton.SetActive(false);
+        startMovingCharacters();
     }
 
     private void activateNextLevelButton()
@@ -333,7 +345,7 @@ public class PathConnections : MonoBehaviour
 
     private void checkFirstNewPoint()
     {
-        Debug.Log("clocked somewhere");
+        Debug.Log("clicked somewhere");
         //if the player clicked on one of the vertical lines
         for (var i = 0; i < paths.Length; i++)
         {
@@ -389,7 +401,7 @@ public class PathConnections : MonoBehaviour
         {
             //error consideration for the x cordinate since it's hard to click the exact spot
             //abs to make sure lines are directly next to each other
-            if ((Mathf.Abs(i - newPathStart) == 1) && mouseInPath(paths[i]))
+            if (areNextToEachOther(paths[i].ogVerticalPoints[0].position.x, newPathStartPos.x) && mouseInPath(paths[i]))
             {
                 //alter current path
                 Debug.Log("new path");
@@ -402,6 +414,29 @@ public class PathConnections : MonoBehaviour
             }
         }
     }
+
+    private bool areNextToEachOther(float x1, float x2)
+    {
+        int ogIndex1 = 0;
+        int ogIndex2 = 0;
+        for(int i = 0; i < paths.Length; i++)
+        {
+            float curXVal = paths[i].ogVerticalPoints[0].transform.position.x;
+
+            if (curXVal == x1)
+            {
+                ogIndex1 = i;
+            }
+            
+            if (curXVal == x2)
+            {
+                ogIndex2 = i;
+            }
+        }
+
+        return Mathf.Abs(ogIndex1 - ogIndex2) == 1;
+    }
+
 
     public bool mouseInPath(Path curPath)
     {
